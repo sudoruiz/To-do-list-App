@@ -1,26 +1,51 @@
 import 'package:flutter/material.dart';
 import 'package:to_do_list/utils/todo_list.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 
 class HomePage extends StatefulWidget {
-  HomePage({super.key});
+  const HomePage({super.key});
 
   @override
   State<HomePage> createState() => _HomePageState();
 }
 
 class _HomePageState extends State<HomePage> {
-
   final _controller = TextEditingController();
-  final List toDoList = [
-    ['Passear com cachorro', false],
-    ['Limpar escrivania', false],
-    ['Correr no parque', false],
-  ];
+
+  List toDoList = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  void _loadData() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? storedData = prefs.getString('todoList');
+    if (storedData != null) {
+      setState(() {
+        toDoList = List<Map<String, dynamic>>.from(jsonDecode(storedData))
+            .map((task) => [task['taskName'], task['taskCompleted']])
+            .toList();
+      });
+    }
+  }
+
+  void _saveData() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    List<Map<String, dynamic>> tasks = toDoList
+        .map((task) => {'taskName': task[0], 'taskCompleted': task[1]})
+        .toList();
+    await prefs.setString('todoList', jsonEncode(tasks));
+  }
 
   void checkBoxChanged(int index) {
     setState(() {
       toDoList[index][1] = !toDoList[index][1];
     });
+     _saveData();
   }
 
   void saveNewTask() {
@@ -28,12 +53,14 @@ class _HomePageState extends State<HomePage> {
       toDoList.add([_controller.text, false]);
       _controller.clear();
     });
+     _saveData();
   }
 
   void deleteTask(int index) {
     setState(() {
       toDoList.removeAt(index);
     });
+     _saveData();
   }
 
   @override
@@ -86,6 +113,8 @@ class _HomePageState extends State<HomePage> {
           ),
           FloatingActionButton(
             onPressed: saveNewTask,
+            backgroundColor: Colors.blue,
+            foregroundColor: Colors.white,
             child: const Icon(Icons.add),
           ),
         ],
